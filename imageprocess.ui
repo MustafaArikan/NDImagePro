@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>mainWindowClass</class>
+ <widget class="QMainWindow" name="mainWindowClass">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1140</width>
+    <height>814</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>mainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <item>
+     <layout class="QVBoxLayout" name="controlPanelLayout">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetFixedSize</enum>
+      </property>
+      <item>
+       <widget class="QLabel" name="logoLable">
+        <property name="minimumSize">
+         <size>
+          <width>260</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>260</width>
+          <height>145</height>
+         </size>
+        </property>
+        <property name="layoutDirection">
+         <enum>Qt::LeftToRight</enum>
+        </property>
+        <property name="text">
+         <string>logo</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="centrlWidgetLayout">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetFixedSize</enum>
+      </property>
+      <item>
+       <widget class="QVTKWidget" name="originalQVTKViewer" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>400</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="autoFillBackground">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QVTKWidget" name="resultQVTKViewer" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>400</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="autoFillBackground">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1140</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_F">
+    <property name="title">
+     <string>File (&amp;F)</string>
+    </property>
+    <addaction name="action_Open"/>
+    <addaction name="action_Open_3DImage"/>
+    <addaction name="action_OpenDICOM"/>
+    <addaction name="action_Save"/>
+   </widget>
+   <widget class="QMenu" name="menu_P">
+    <property name="title">
+     <string>Point operations (&amp; P)</string>
+    </property>
+    <addaction name="action_Color2Gray"/>
+    <addaction name="action_ColorHist"/>
+    <addaction name="action_GrayHist"/>
+    <addaction name="action_HistgramEqualization"/>
+    <addaction name="action_Interpolation"/>
+    <addaction name="action_SingleChannel"/>
+   </widget>
+   <widget class="QMenu" name="menu_G">
+    <property name="title">
+     <string>&amp; Image Variation</string>
+    </property>
+    <widget class="QMenu" name="menu_O_2">
+     <property name="title">
+      <string>Orthogonal Variation (&amp; O)</string>
+     </property>
+     <addaction name="action_Fourier"/>
+    </widget>
+    <addaction name="action_Geometry"/>
+    <addaction name="menu_O_2"/>
+    <addaction name="action_Morphology"/>
+   </widget>
+   <widget class="QMenu" name="menu_I">
+    <property name="title">
+     <string>Image Filter (&amp; I)</string>
+    </property>
+    <addaction name="action_MeanFilter"/>
+    <addaction name="action_GaussianFilter"/>
+    <addaction name="action_LaplacianFilter"/>
+    <addaction name="action_BilateralFilter"/>
+    <addaction name="action_CurvatureAnisotropicDiffusionFilter"/>
+   </widget>
+   <widget class="QMenu" name="menu_S">
+    <property name="title">
+     <string>Image Segmentation</string>
+    </property>
+    <addaction name="action_RegionGrowSeg"/>
+    <addaction name="action_WatershedSeg"/>
+    <addaction name="action_PEDSeg"/>
+   </widget>
+   <widget class="QMenu" name="menu_E">
+    <property name="title">
+     <string>&amp; Edges &amp; Outlines</string>
+    </property>
+    <addaction name="action_Edge"/>
+   </widget>
+   <widget class="QMenu" name="menu_R">
+    <property name="title">
+     <string>&amp; Image Registration</string>
+    </property>
+    <addaction name="action_Registration_2D"/>
+   </widget>
+   <widget class="QMenu" name="menu_V">
+    <property name="title">
+     <string>&amp; Image Visualization</string>
+    </property>
+    <addaction name="action_VolumeRender"/>
+    <addaction name="action_SurfaceRender"/>
+   </widget>
+   <widget class="QMenu" name="menu_A">
+    <property name="title">
+     <string>&amp; Help</string>
+    </property>
+    <addaction name="action_About"/>
+   </widget>
+   <addaction name="menu_F"/>
+   <addaction name="menu_P"/>
+   <addaction name="menu_G"/>
+   <addaction name="menu_I"/>
+   <addaction name="menu_E"/>
+   <addaction name="menu_S"/>
+   <addaction name="menu_R"/>
+   <addaction name="menu_V"/>
+   <addaction name="menu_A"/>
+  </widget>
+  <widget class="QToolBar" name="mainToolBar">
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_Open"/>
+   <addaction name="separator"/>
+   <addaction name="action_Save"/>
+   <addaction name="separator"/>
+   <addaction name="separator"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="action_Open">
+   <property name="icon">
+    <iconset resource="imageprocess.qrc">
+     <normaloff>:/images/images/open.png</normaloff>:/images/images/open.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open 2D Image (&amp; 2D)</string>
+   </property>
+   <property name="toolTip">
+    <string>打开</string>
+   </property>
+  </action>
+  <action name="action_Dilation">
+   <property name="text">
+    <string>Dilation</string>
+   </property>
+   <property name="toolTip">
+    <string>Dilation</string>
+   </property>
+  </action>
+  <action name="action_Erosion">
+   <property name="text">
+    <string>Erosion</string>
+   </property>
+   <property name="toolTip">
+    <string>Erosion</string>
+   </property>
+  </action>
+  <action name="action_MeanFilter">
+   <property name="text">
+    <string>Median Filter (&amp; M)</string>
+   </property>
+   <property name="toolTip">
+    <string>Mean Filter</string>
+   </property>
+  </action>
+  <action name="action_GaussianFilter">
+   <property name="text">
+    <string>Gaussian filtering (&amp; G)</string>
+   </property>
+  </action>
+  <action name="action_LaplacianFilter">
+   <property name="text">
+    <string>Laplacian (&amp; L)</string>
+   </property>
+  </action>
+  <action name="action_Geometry">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Geometric Change (&amp; G)</string>
+   </property>
+  </action>
+  <action name="action_Morphology">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Morphological Change (&amp; M)</string>
+   </property>
+  </action>
+  <action name="action_Threshold">
+   <property name="text">
+    <string>Threshold</string>
+   </property>
+   <property name="toolTip">
+    <string>Threshold</string>
+   </property>
+  </action>
+  <action name="action_Save">
+   <property name="icon">
+    <iconset resource="imageprocess.qrc">
+     <normaloff>:/images/images/save.png</normaloff>:/images/images/save.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp; Save</string>
+   </property>
+   <property name="toolTip">
+    <string>Save</string>
+   </property>
+  </action>
+  <action name="action_Color2Gray">
+   <property name="text">
+    <string>Color Graph to Grayscale (&amp; C_G)</string>
+   </property>
+  </action>
+  <action name="action_HistgramEqualization">
+   <property name="text">
+    <string>Histogram Equalization (&amp; E)</string>
+   </property>
+  </action>
+  <action name="action_ColorHist">
+   <property name="text">
+    <string>Color Graph Histogram (&amp; H_C)</string>
+   </property>
+  </action>
+  <action name="action_Interpolation">
+   <property name="text">
+    <string>&amp; Interpolation</string>
+   </property>
+  </action>
+  <action name="action_SingleChannel">
+   <property name="text">
+    <string>Single Channel &amp; graph</string>
+   </property>
+  </action>
+  <action name="action_OpenOperation">
+   <property name="text">
+    <string>Open</string>
+   </property>
+   <property name="toolTip">
+    <string>Open</string>
+   </property>
+  </action>
+  <action name="action_CloseOperation">
+   <property name="text">
+    <string>Close</string>
+   </property>
+   <property name="toolTip">
+    <string>Close</string>
+   </property>
+  </action>
+  <action name="action_RegionGrowSeg">
+   <property name="text">
+    <string>&amp; Regional Growth</string>
+   </property>
+  </action>
+  <action name="action_WatershedSeg">
+   <property name="text">
+    <string>Watershed (&amp; W)</string>
+   </property>
+  </action>
+  <action name="action_BilateralFilter">
+   <property name="text">
+    <string>B &amp; B Filter</string>
+   </property>
+  </action>
+  <action name="action_GrayHist">
+   <property name="text">
+    <string>Grayscale Histogram (&amp; H_G)</string>
+   </property>
+  </action>
+  <action name="action_About">
+   <property name="text">
+    <string>&amp; About</string>
+   </property>
+  </action>
+  <action name="action_Fourier">
+   <property name="text">
+    <string>Fourier Transform (&amp; F)</string>
+   </property>
+   <property name="toolTip">
+    <string>Fourier Transform (&amp; F)</string>
+   </property>
+  </action>
+  <action name="action_CurvatureAnisotropicDiffusionFilter">
+   <property name="text">
+    <string>Curve Anisotropic Filter (&amp; C)</string>
+   </property>
+  </action>
+  <action name="action_Open_3DImage">
+   <property name="text">
+    <string>Open 3D Image (&amp; 3D)</string>
+   </property>
+  </action>
+  <action name="action_Edge">
+   <property name="text">
+    <string>&amp; Edge Detection</string>
+   </property>
+  </action>
+  <action name="action_OpenDICOM">
+   <property name="text">
+    <string>Open DICOM image (&amp; DICOM)</string>
+   </property>
+  </action>
+  <action name="action_VolumeRender">
+   <property name="text">
+    <string>Volume Rendering (&amp; V)</string>
+   </property>
+  </action>
+  <action name="action_SurfaceRender">
+   <property name="text">
+    <string>&amp; Face Plot</string>
+   </property>
+  </action>
+  <action name="action_Registration_2D">
+   <property name="text">
+    <string>2D Registration (&amp; R_2D)</string>
+   </property>
+  </action>
+  <action name="action_PEDSeg">
+   <property name="text">
+    <string>PED segmentation (&amp; PED)</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>QVTKWidget</class>
+   <extends>QWidget</extends>
+   <header>QVTKWidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="imageprocess.qrc"/>
+ </resources>
+ <connections/>
+</ui>
