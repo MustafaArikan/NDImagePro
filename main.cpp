@@ -25,6 +25,10 @@ using namespace std;
 #define W3 setw(5) << fixed << right << setprecision(3)
 
 void GetAllPathsFromWorkspace(string workspacePath, vector< vector< string > >& allPaths);
+void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput);
+void ExtractSliceAsMask(int repSlice, std::string pathToMhd, std::string pathToOutput);
+void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::string pathToOutput);
+
 template<class Iter_T, class Iter2_T>
 double vectorDistance(Iter_T first, Iter_T last, Iter2_T first2);
 
@@ -57,16 +61,18 @@ int main(int argc, char *argv[])
 
 	std::vector<std::vector<std::string>> allPaths; 
 	std::string workspacePath = "F:\\workspace_f\\Workspace_BRATS\\brats\\BRATS2015_Training\\workspace\\extractForCNN";
+	std::string workspacePathTrain = "F:\\workspace_f\\Workspace_BRATS\\brats\\BRATS2015_Training\\workspace\\extractForCNN\\training";
 
 	GetAllPathsFromWorkspace(workspacePath, allPaths);
 
 	std::vector<std::vector<std::string>>::iterator it;
 	int i = 0;  // counter
 	std::cout << std::setw(3);
+	int testImageNr = 21;
 
 	for (it = allPaths.begin(); it < allPaths.end(); it++, i++) {
 
-		cout << allPaths[i][0] << endl;
+		//cout << allPaths[i][0] << endl;
 		ReaderType::Pointer reader = ReaderType::New();
 		reader->SetFileName(allPaths[i][0].c_str());
 		reader->Update();
@@ -75,7 +81,7 @@ int main(int argc, char *argv[])
 		itk::ImageSliceIteratorWithIndex<ImageType> it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
 		int zSize = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[2];
 
-		cout << "Size z: " << zSize << endl;
+		//cout << "Size z: " << zSize << endl;
 		vector<int[5] > zSlices(zSize);
 		vector<float[5] > zSlicesNorm(zSize);
 
@@ -86,11 +92,12 @@ int main(int argc, char *argv[])
 		int zCnt = 0;
 
 		std::vector<int[2]> minsmax(5);
+		for (int y = 0; y < 5; y++) {
+			minsmax[y][0] = std::numeric_limits<int>::max();
+			minsmax[y][1] = std::numeric_limits<int>::min();
+		}
 
 		while (!it.IsAtEnd()) {
-			minsmax[zCnt][0] = std::numeric_limits<int>::max();
-			minsmax[zCnt][1] = std::numeric_limits<int>::min();
-
 			while (!it.IsAtEndOfSlice()) {
 				while (!it.IsAtEndOfLine()) {
 					ImageType::ValueType value = it.Get();
@@ -115,18 +122,20 @@ int main(int argc, char *argv[])
 		float ranges[5];
 		for (int y = 0; y < 5; y++) {
 			ranges[y] = minsmax[y][1] - minsmax[y][0];
-			cout << y << " : " << minsmax[y][0] << "," << minsmax[y][1] << endl;
+			//cout << y << " : " << minsmax[y][0] << "," << minsmax[y][1] << endl;
 		}
 
 		int sumLabels = labelCount[1] + labelCount[2] + labelCount[3] + labelCount[4];
 		float onePercent = sumLabels / 100;
 
-		cout << "1: " << labelCount[1] / onePercent << " 2: " << labelCount[2] / onePercent << " 3: " << labelCount[3] / onePercent << " 4: " << labelCount[4] / onePercent;
-		cout << " Sum of Labels: " << sumLabels << endl;
+		//cout << "1: " << labelCount[1] / onePercent << " 2: " << labelCount[2] / onePercent << " 3: " << labelCount[3] / onePercent << " 4: " << labelCount[4] / onePercent;
+		//cout << " Sum of Labels: " << sumLabels << endl;
 
 		float labelPercen[4] = { labelCount[1] / onePercent ,labelCount[2] / onePercent ,labelCount[3] / onePercent ,labelCount[4] / onePercent };
 
 		float minDistance = std::numeric_limits<float>::max();
+		float maxSumNorm = std::numeric_limits<int>::min();
+		int repSlice = -1;
 		for (int k = 0; k < zSize; k++) {
 			bool isNotValid = false;
 
@@ -160,23 +169,48 @@ int main(int argc, char *argv[])
 			//float distance = vectorDistance(labelPercen, labelPercen + 4, labelPercenSlice);
 			
 			//if (distance < 15 && !isNotValid) {
+			float sumNorm = zSlicesNorm[k][1] + zSlicesNorm[k][2] + zSlicesNorm[k][3] + zSlicesNorm[k][4];
+			float mean = boost::accumulators::mean(acc);
+
 			if(!isNotValid){
-				cout << "mean for slice " << k << " " << boost::accumulators::mean(acc) << endl;
-				cout << sqrt(boost::accumulators::variance(acc)) << endl;
-				//if (distance < minDistance) {
-					//minDistance = distance;
-					//cout << W3 << labelPercenSlice[0] << W3 << labelPercenSlice[1] << W3 << labelPercenSlice[2] << W3 << labelPercenSlice[3] <<
-					cout << "[" << W3 << zSlices[k][1] << "," << W3 << zSlices[k][2] << "," << W3 << zSlices[k][3] << "," << W3 << zSlices[k][4] << "]" << endl;// "],\t|\t" << endl;
-					cout << "[" << W3 << zSlicesNorm[k][1] << "," << W3 << zSlicesNorm[k][2] << "," << W3 << zSlicesNorm[k][3] << "," << W3 << zSlicesNorm[k][4] << "]" << endl; // "],\t|\t" << endl;
+				if (sumNorm > maxSumNorm) {
+					maxSumNorm = sumNorm;
+					//cout << "mean for slice " << k << " " << boost::accumulators::mean(acc) << ",";
+					//cout << " sqrt:" << sqrt(boost::accumulators::variance(acc)) << ",";
+					//cout << " norm sum: " << sumNorm << endl;
+					////if (distance < minDistance) {
+					//	//minDistance = distance;
+					//	//cout << W3 << labelPercenSlice[0] << W3 << labelPercenSlice[1] << W3 << labelPercenSlice[2] << W3 << labelPercenSlice[3] <<
+					//cout << "[" << W3 << zSlices[k][1] << "," << W3 << zSlices[k][2] << "," << W3 << zSlices[k][3] << "," << W3 << zSlices[k][4] << "]" << endl;// "],\t|\t" << endl;
+					//cout << "[" << W3 << zSlicesNorm[k][1] << "," << W3 << zSlicesNorm[k][2] << "," << W3 << zSlicesNorm[k][3] << "," << W3 << zSlicesNorm[k][4] << "]" << endl; // "],\t|\t" << endl;
 						//<< "Distance: " << W3 << distance << endl;
 				//}
+					repSlice = k;
+				}
+			}
+		}
+
+		if (repSlice != -1) {
+			boost::filesystem::path filenameDataset(allPaths[i][0]);
+			if (zSlicesNorm[repSlice][1] != 0 && zSlicesNorm[repSlice][2] != 0 && zSlicesNorm[repSlice][3] != 0 && zSlicesNorm[repSlice][4] != 0) {
+				cout << "Slice " << W3 << repSlice << W3 << filenameDataset.filename() << endl;
+				cout << "[" << W3 << zSlices[repSlice][1] << "," << W3 << zSlices[repSlice][2] << "," << W3 << zSlices[repSlice][3] << "," << W3 << zSlices[repSlice][4] << "]" << endl;// "],\t|\t" << endl;
+				cout << "[" << W3 << zSlicesNorm[repSlice][1] << "," << W3 << zSlicesNorm[repSlice][2] << "," << W3 << zSlicesNorm[repSlice][3] << "," << W3 << zSlicesNorm[repSlice][4] << "]" << endl; // "],\t|\t" << endl;
+
+				for (int j = 0; j < 5; j++) {
+					if (j == 0) {
+						ExtractSliceAsAnnotatedImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_manual1.tif");
+					}
+					else if (j == 1) {
+						ExtractSliceAsImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training.tif");
+						ExtractSliceAsMask(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training_mask.tif");
+					}
+				}
+				testImageNr++;
 			}
 		}
 
 		pressEnter();
-
-		for (int j = 0; j < 5; j++) {
-		}
 		cout << endl;
 	}
 
@@ -311,4 +345,204 @@ itk::Image< unsigned char, 2>::Pointer EliminateNonRegions(int voxelTh, int regi
 	cout << "New count: " << count << endl;
 
 	return newImage;
+}
+
+void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput) {
+	typedef itk::Image< double, 3 >         ImageType;
+	typedef itk::ImageFileReader<ImageType> ReaderType;
+
+	ReaderType::Pointer reader = ReaderType::New();
+	reader->SetFileName(pathToMhd.c_str());
+	reader->Update();
+
+	typedef itk::Image< unsigned short, 2 >	IntImageType2D;
+	IntImageType2D::RegionType region;
+	IntImageType2D::IndexType start;
+	start[0] = 0;
+	start[1] = 0;
+
+	IntImageType2D::SizeType size;
+	size[0] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
+	size[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+
+	region.SetSize(size);
+	region.SetIndex(start);
+
+	IntImageType2D::Pointer image2d = IntImageType2D::New();
+	image2d->SetRegions(region);
+	image2d->Allocate();
+	image2d->FillBuffer(0);
+
+	itk::ImageSliceIteratorWithIndex<ImageType> it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
+	itk::ImageSliceIteratorWithIndex<IntImageType2D> it2(image2d, image2d->GetLargestPossibleRegion());
+
+	it.SetFirstDirection(0);
+	it.SetSecondDirection(1);
+
+	it2.SetFirstDirection(0);
+	it2.SetSecondDirection(1);
+
+	it.GoToBegin();
+	it2.GoToBegin();
+
+	//while (!it.IsAtEnd())
+	//{
+	for (int s = 0; s < repSlice; s++) {
+		it.NextSlice();
+	}
+	while (!it.IsAtEndOfSlice())
+	{
+		while (!it.IsAtEndOfLine())
+		{
+			ImageType::ValueType value = it.Get();  // it.Set() doesn't exist in the Const Iterator
+			it2.Set(value);
+			++it;
+			++it2;
+		}
+		it.NextLine();
+		it2.NextLine();
+	}
+	//	it.NextSlice();
+	//	it2.NextSlice();
+	//}
+
+	typedef itk::ImageFileWriter< IntImageType2D  > WriterType;
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetFileName(pathToOutput);
+	writer->SetInput(image2d);
+	writer->Update();
+}
+
+void ExtractSliceAsMask(int repSlice, std::string pathToMhd, std::string pathToOutput) {
+	typedef itk::Image< double, 3 >         ImageType;
+	typedef itk::ImageFileReader<ImageType> ReaderType;
+
+	ReaderType::Pointer reader = ReaderType::New();
+	reader->SetFileName(pathToMhd.c_str());
+	reader->Update();
+
+	typedef itk::Image< unsigned char, 2 >	IntImageType2D;
+	IntImageType2D::RegionType region;
+	IntImageType2D::IndexType start;
+	start[0] = 0;
+	start[1] = 0;
+
+	IntImageType2D::SizeType size;
+	size[0] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
+	size[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+
+	region.SetSize(size);
+	region.SetIndex(start);
+
+	IntImageType2D::Pointer image2d = IntImageType2D::New();
+	image2d->SetRegions(region);
+	image2d->Allocate();
+	image2d->FillBuffer(0);
+
+	itk::ImageSliceIteratorWithIndex<ImageType> it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
+	itk::ImageSliceIteratorWithIndex<IntImageType2D> it2(image2d, image2d->GetLargestPossibleRegion());
+
+	it.SetFirstDirection(0);
+	it.SetSecondDirection(1);
+
+	it2.SetFirstDirection(0);
+	it2.SetSecondDirection(1);
+
+	it.GoToBegin();
+	it2.GoToBegin();
+
+	//while (!it.IsAtEnd())
+	//{
+	for (int s = 0; s < repSlice; s++) {
+		it.NextSlice();
+	}
+	while (!it.IsAtEndOfSlice())
+	{
+		while (!it.IsAtEndOfLine())
+		{
+			ImageType::ValueType value = it.Get();  // it.Set() doesn't exist in the Const Iterator
+			it2.Set(255);
+			++it;
+			++it2;
+		}
+		it.NextLine();
+		it2.NextLine();
+	}
+	//	it.NextSlice();
+	//	it2.NextSlice();
+	//}
+
+	typedef itk::ImageFileWriter< IntImageType2D  > WriterType;
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetFileName(pathToOutput);
+	writer->SetInput(image2d);
+	writer->Update();
+}
+
+void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::string pathToOutput) {
+	typedef itk::Image< double, 3 >         ImageType;
+	typedef itk::ImageFileReader<ImageType> ReaderType;
+
+	ReaderType::Pointer reader = ReaderType::New();
+	reader->SetFileName(pathToMhd.c_str());
+	reader->Update();
+
+	typedef itk::Image< unsigned char, 2 >	IntImageType2D;
+	IntImageType2D::RegionType region;
+	IntImageType2D::IndexType start;
+	start[0] = 0;
+	start[1] = 0;
+
+	IntImageType2D::SizeType size;
+	size[0] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
+	size[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+
+	region.SetSize(size);
+	region.SetIndex(start);
+
+	IntImageType2D::Pointer image2d = IntImageType2D::New();
+	image2d->SetRegions(region);
+	image2d->Allocate();
+	image2d->FillBuffer(0);
+
+	itk::ImageSliceIteratorWithIndex<ImageType> it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
+	itk::ImageSliceIteratorWithIndex<IntImageType2D> it2(image2d, image2d->GetLargestPossibleRegion());
+
+	it.SetFirstDirection(0);
+	it.SetSecondDirection(1);
+
+	it2.SetFirstDirection(0);
+	it2.SetSecondDirection(1);
+
+	it.GoToBegin();
+	it2.GoToBegin();
+
+	//while (!it.IsAtEnd())
+	//{
+	for (int s = 0; s < repSlice; s++) {
+		it.NextSlice();
+	}
+	while (!it.IsAtEndOfSlice())
+	{
+		while (!it.IsAtEndOfLine())
+		{
+			ImageType::ValueType value = it.Get();  // it.Set() doesn't exist in the Const Iterator
+			if (value == 1 || value == 2 || value == 3 || value == 4) {
+				it2.Set(255);
+			}
+			++it;
+			++it2;
+		}
+		it.NextLine();
+		it2.NextLine();
+	}
+	//	it.NextSlice();
+	//	it2.NextSlice();
+	//}
+
+	typedef itk::ImageFileWriter< IntImageType2D  > WriterType;
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetFileName(pathToOutput);
+	writer->SetInput(image2d);
+	writer->Update();
 }
