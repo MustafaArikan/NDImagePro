@@ -76,7 +76,8 @@ int main(int argc, char *argv[])
 		int zSize = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[2];
 
 		cout << "Size z: " << zSize << endl;
-		vector<float[5] > zSlices(zSize);
+		vector<int[5] > zSlices(zSize);
+		vector<float[5] > zSlicesNorm(zSize);
 
 		it.SetFirstDirection(0);
 		it.SetSecondDirection(1);
@@ -130,12 +131,12 @@ int main(int argc, char *argv[])
 			bool isNotValid = false;
 
 			for (int y = 0; y < 5; y++) {
-				zSlices[k][y] = (zSlices[k][y] - minsmax[y][0]) / ranges[y];
+				zSlicesNorm[k][y] = (zSlices[k][y] - minsmax[y][0]) / ranges[y];
 			}
 
-			float sumLabelsSlice = zSlices[k][1] + zSlices[k][2] + zSlices[k][3] + zSlices[k][4];
+			float sumLabelsSlice = zSlicesNorm[k][1] + zSlicesNorm[k][2] + zSlicesNorm[k][3] + zSlicesNorm[k][4];
 			float onePercentSlice = sumLabelsSlice / 100;
-			float labelPercenSlice[4] = { zSlices[k][1] / onePercentSlice ,zSlices[k][2] / onePercentSlice ,zSlices[k][3] / onePercentSlice ,zSlices[k][4] / onePercentSlice };
+			float labelPercenSlice[4] = { zSlicesNorm[k][1] / onePercentSlice ,zSlicesNorm[k][2] / onePercentSlice ,zSlicesNorm[k][3] / onePercentSlice ,zSlicesNorm[k][4] / onePercentSlice };
 
 			if (isnan(labelPercenSlice[0]) || isnan(labelPercenSlice[1]) || isnan(labelPercenSlice[2]) || isnan(labelPercenSlice[3])) {
 				isNotValid = true;
@@ -149,11 +150,11 @@ int main(int argc, char *argv[])
 
 			for (int l = 0; l < 4; l++) {
 				if (labelPercenSlice[l] < 0.0) { isNotValid = true; }
-				acc(labelPercenSlice[l]);
 			}
 
 			for (int l = 1; l < 5; l++) {
-				if (zSlices[k][l] < 0.0) { isNotValid = true; }
+				if (zSlicesNorm[k][l] < 0.0) { isNotValid = true; }
+				acc(zSlicesNorm[k][l]);
 			}
 
 			//float distance = vectorDistance(labelPercen, labelPercen + 4, labelPercenSlice);
@@ -163,9 +164,10 @@ int main(int argc, char *argv[])
 				cout << "mean for slice " << k << " " << boost::accumulators::mean(acc) << endl;
 				cout << sqrt(boost::accumulators::variance(acc)) << endl;
 				//if (distance < minDistance) {
-					minDistance = distance;
+					//minDistance = distance;
 					//cout << W3 << labelPercenSlice[0] << W3 << labelPercenSlice[1] << W3 << labelPercenSlice[2] << W3 << labelPercenSlice[3] <<
-					cout << "\t|\t[" << W3 << zSlices[k][1] << "," << W3 << zSlices[k][2] << "," << W3 << zSlices[k][3] << "," << W3 << zSlices[k][4] << "],\t|\t";
+					cout << "[" << W3 << zSlices[k][1] << "," << W3 << zSlices[k][2] << "," << W3 << zSlices[k][3] << "," << W3 << zSlices[k][4] << "]" << endl;// "],\t|\t" << endl;
+					cout << "[" << W3 << zSlicesNorm[k][1] << "," << W3 << zSlicesNorm[k][2] << "," << W3 << zSlicesNorm[k][3] << "," << W3 << zSlicesNorm[k][4] << "]" << endl; // "],\t|\t" << endl;
 						//<< "Distance: " << W3 << distance << endl;
 				//}
 			}
