@@ -8,6 +8,9 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/variance.hpp>
 
 #include <itkImageFileReader.h>
 #include <itkImageSliceIteratorWithIndex.h>
@@ -18,9 +21,14 @@
 #include "itkImageFileWriter.h"
 #include "itkPNGImageIOFactory.h"
 
-template< unsigned int VDimension >
-int ReadScalarImage(const char* inputFileName, const itk::ImageIOBase::IOComponentType componentType);
+using namespace std;
+#define W3 setw(5) << fixed << right << setprecision(3)
 
+void GetAllPathsFromWorkspace(string workspacePath, vector< vector< string > >& allPaths);
+template<class Iter_T, class Iter2_T>
+double vectorDistance(Iter_T first, Iter_T last, Iter2_T first2);
+
+template< unsigned int VDimension >
 itk::Image< unsigned char, 2>::Pointer EliminateNonRegions(int voxelTh, int regionCount, itk::Image<unsigned char, 2>::Pointer labelImage);
 
 using namespace boost::filesystem;
@@ -40,218 +48,143 @@ void pressEnter() {
 	cin.ignore();
 }
 
-
 int main(int argc, char *argv[])
 {
+	typedef itk::Image< double, 3 >         ImageType;
+	typedef itk::ImageFileReader<ImageType> ReaderType;
+
 	cout << "Start of the test program:" << endl;
 
-	int imageNr = 21;
-	for (auto it : recursive_directory_range("D:\\workspace\\Projects\\RegProject\\GA_Morpho_FAF_update"))
-	{
-		std::stringstream Mystr;
-		Mystr << it;
+	std::vector<std::vector<std::string>> allPaths; 
+	std::string workspacePath = "F:\\workspace_f\\Workspace_BRATS\\brats\\BRATS2015_Training\\workspace\\extractForCNN";
 
-		
+	GetAllPathsFromWorkspace(workspacePath, allPaths);
 
-		if (boost::ends_with(Mystr.str(), ".jpg.manAnnot.mhd\"")) {
-			cout << Mystr.str() << endl;
-			std::string unquoteMystr = Mystr.str();
+	std::vector<std::vector<std::string>>::iterator it;
+	int i = 0;  // counter
+	std::cout << std::setw(3);
 
-			pressEnter();
+	for (it = allPaths.begin(); it < allPaths.end(); it++, i++) {
 
-			boost::replace_all(unquoteMystr, "\"", "");
+		cout << allPaths[i][0] << endl;
+		ReaderType::Pointer reader = ReaderType::New();
+		reader->SetFileName(allPaths[i][0].c_str());
+		reader->Update();
+		int labelCount[5] = {};
 
-			typedef itk::ImageIOBase::IOComponentType ScalarPixelType;
+		itk::ImageSliceIteratorWithIndex<ImageType> it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
+		int zSize = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[2];
 
-			itk::ImageIOBase::Pointer imageIO = itk::ImageIOFactory::CreateImageIO(unquoteMystr.c_str(), itk::ImageIOFactory::ReadMode);
-			if (!imageIO){
-				std::cerr << "Could not CreateImageIO for: " << Mystr.str() << std::endl;
-				return EXIT_FAILURE;
-			}
-			imageIO->SetFileName(unquoteMystr.c_str());
-			imageIO->ReadImageInformation();
+		cout << "Size z: " << zSize << endl;
+		vector<float[5] > zSlices(zSize);
 
-			const ScalarPixelType pixelType = imageIO->GetComponentType();
-			std::cout << "Pixel Type is " << imageIO->GetComponentTypeAsString(pixelType) // 'double'
-				<< std::endl;
-			const size_t numDimensions = imageIO->GetNumberOfDimensions();
-			std::cout << "numDimensions: " << numDimensions << std::endl; // '2'
-			std::cout << "component size: " << imageIO->GetComponentSize() << std::endl; // '8'
-			std::cout << "pixel type (string): " << imageIO->GetPixelTypeAsString(imageIO->GetPixelType()) << std::endl; // 'vector'
-			std::cout << "pixel type: " << imageIO->GetPixelType() << std::endl; // '5'
+		it.SetFirstDirection(0);
+		it.SetSecondDirection(1);
 
-			typedef itk::Image< float, 2 >         ImageType;
-			typedef itk::ImageFileReader<ImageType> ReaderType;
+		it.GoToBegin();
+		int zCnt = 0;
 
-			ReaderType::Pointer reader = ReaderType::New();
-			reader->SetFileName(unquoteMystr.c_str());
-			reader->Update();
+		std::vector<int[2]> minsmax(5);
 
-			std::string pngFileName(unquoteMystr);
-			std::string pngOrFileName(unquoteMystr);
+		while (!it.IsAtEnd()) {
+			minsmax[zCnt][0] = std::numeric_limits<int>::max();
+			minsmax[zCnt][1] = std::numeric_limits<int>::min();
 
-			boost::replace_all(unquoteMystr, ".jpg.manAnnot.mhd", ".jpg.mhd");
-
-			boost::replace_all(pngFileName, ".jpg.manAnnot.mhd", ".jpg.manAnnot.mhd.png");
-			boost::replace_all(pngOrFileName, ".jpg.manAnnot.mhd", ".jpg.mhd.png");
-
-			ReaderType::Pointer reader2 = ReaderType::New();
-			reader2->SetFileName(unquoteMystr.c_str());
-			reader2->Update();
-
-			typedef itk::Image< unsigned char, 2 >	IntImageType2D;
-			IntImageType2D::RegionType region;
-			IntImageType2D::IndexType start;
-			start[0] = 0;
-			start[1] = 0;
-
-			IntImageType2D::SizeType size;
-			size[0] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
-			size[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
-
-			region.SetSize(size);
-			region.SetIndex(start);
-
-			IntImageType2D::Pointer image2d = IntImageType2D::New();
-			image2d->SetRegions(region);
-			image2d->Allocate();
-			image2d->FillBuffer(0);
-
-			IntImageType2D::Pointer image2dOr = IntImageType2D::New();
-			image2dOr->SetRegions(region);
-			image2dOr->Allocate();
-			image2dOr->FillBuffer(0);
-
-			IntImageType2D::Pointer emptyImage = IntImageType2D::New();
-			emptyImage->SetRegions(region);
-			emptyImage->Allocate();
-			emptyImage->FillBuffer(255);
-
-			itk::ImageSliceIteratorWithIndex<IntImageType2D> it2(image2d, image2d->GetLargestPossibleRegion());
-			itk::ImageSliceIteratorWithIndex<IntImageType2D> it2_or(image2dOr, image2dOr->GetLargestPossibleRegion());
-			itk::ImageSliceIteratorWithIndex<ImageType> it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
-			itk::ImageSliceIteratorWithIndex<ImageType> it_or(reader2->GetOutput(), reader2->GetOutput()->GetLargestPossibleRegion());
-
-			it.SetFirstDirection(0);
-			it.SetSecondDirection(1);
-
-			it_or.SetFirstDirection(0);
-			it_or.SetSecondDirection(1);
-
-			it2.SetFirstDirection(0);
-			it2.SetSecondDirection(1);
-
-			it2_or.SetFirstDirection(0);
-			it2_or.SetSecondDirection(1);
-
-			it.GoToBegin();
-			it_or.GoToBegin();
-			it2.GoToBegin();
-			it2_or.GoToBegin();
-
-			while (!it.IsAtEnd())
-			{
-				while (!it.IsAtEndOfSlice())
-				{
-					while (!it.IsAtEndOfLine())
-					{
-						ImageType::ValueType value = it.Get();  // it.Set() doesn't exist in the Const Iterator
-						ImageType::ValueType value_or = it_or.Get();  // it.Set() doesn't exist in the Const Iterator
-						if (value == 255 && value_or-value != 0) {
-							it2.Set(value);
-						}
-						it2_or.Set(value_or);
-
-						++it;
-						++it_or;
-						++it2;
-						++it2_or;
-					}
-					it.NextLine();
-					it_or.NextLine();
-					it2.NextLine();
-					it2_or.NextLine();
-
+			while (!it.IsAtEndOfSlice()) {
+				while (!it.IsAtEndOfLine()) {
+					ImageType::ValueType value = it.Get();
+					labelCount[int(value)]++;
+					zSlices[zCnt][int(value)]++;
+					++it;
 				}
-				it.NextSlice();
-				it_or.NextSlice();
-				it2.NextSlice();
-				it2_or.NextSlice();
+				it.NextLine();
+			}
+			it.NextSlice();
+
+			for (int y = 0; y < 5; y++) {
+				if (zSlices[zCnt][1] != 0 && zSlices[zCnt][2] != 0 && zSlices[zCnt][3] != 0 && zSlices[zCnt][4] != 0) {
+					if (zSlices[zCnt][y] < minsmax[y][0]) { minsmax[y][0] = zSlices[zCnt][y]; }
+					if (zSlices[zCnt][y] > minsmax[y][1]) { minsmax[y][1] = zSlices[zCnt][y]; }
+				}
 			}
 
-			typedef itk::ConnectedComponentImageFilter <IntImageType2D, IntImageType2D> ConnectedComponentImageFilterType;
-			ConnectedComponentImageFilterType::Pointer labelFilter = ConnectedComponentImageFilterType::New();
-			labelFilter->FullyConnectedOn();
-			labelFilter->SetInput(image2d);
-			labelFilter->Update();
-
-			cout << "Coutn: " << labelFilter->GetObjectCount() << endl;
-			//labelFilter->ReleaseDataFlagOn();
-			IntImageType2D::Pointer newImage2d;
-			newImage2d = EliminateNonRegions(3, labelFilter->GetObjectCount(), labelFilter->GetOutput());
-
-			QuickView viewer;
-			viewer.AddImage(newImage2d.GetPointer(), false, "2D Image");
-			viewer.Visualize();
-
-			boost::filesystem::path p(unquoteMystr.c_str());
-			boost::filesystem::path dir = p.parent_path();
-			
-
-			std::string imageFileName = dir.string() + "\\" + std::to_string(imageNr) + "_training.tif";
-			std::string vesselsFilename = dir.string() + "\\" + std::to_string(imageNr) + "_manual1.png";
-			std::string maskFilename = dir.string() + "\\" + std::to_string(imageNr) + "_training_mask.png";
-
-			cout << imageFileName << endl;
-
-			typedef  itk::ImageFileWriter< IntImageType2D > WriterType;
-			WriterType::Pointer writer = WriterType::New();
-			cout << "Filename: " << pngFileName << endl;
-			itk::PNGImageIOFactory::RegisterOneFactory();
-			writer->SetFileName(vesselsFilename);
-			writer->SetInput(newImage2d);
-			writer->Update();
-
-			writer->SetFileName(imageFileName);
-			writer->SetInput(image2dOr);
-			writer->Update();
-
-			writer->SetFileName(maskFilename);
-			writer->SetInput(emptyImage);
-			writer->Update();
-
-			imageNr++;
-
-			//switch (pixelType)
-			//{
-			//case itk::ImageIOBase::SCALAR:
-			//{
-			//	if (numDimensions == 2)
-			//	{
-			//		return ReadScalarImage< 2 >(unquoteMystr.c_str(), componentType);
-			//	}
-			//	else if (numDimensions == 3)
-			//	{
-			//		return ReadScalarImage< 3 >(unquoteMystr.c_str(), componentType);
-			//	}
-			//	else if (numDimensions == 4)
-			//	{
-			//		return ReadScalarImage< 4 >(unquoteMystr.c_str(), componentType);
-			//	}
-			//}
-
-			//const unsigned int Dimension = 2;
-
-			//typedef unsigned char                      PixelType;
-			//typedef itk::Image< PixelType, Dimension > ImageType;
-			//typedef itk::ImageFileReader< ImageType >  ReaderType;
-			//ReaderType::Pointer reader = ReaderType::New();
-			//reader->SetFileName(Mystr.str());
-			//reader->Update();
-			//cout << "Dimension: " << reader->GetOutput()->GetImageDimension() << endl;
-			//cout << "Dimension: " << reader->GetOutput()->Get << endl;
+			zCnt++;
 		}
+
+		float ranges[5];
+		for (int y = 0; y < 5; y++) {
+			ranges[y] = minsmax[y][1] - minsmax[y][0];
+			cout << y << " : " << minsmax[y][0] << "," << minsmax[y][1] << endl;
+		}
+
+		int sumLabels = labelCount[1] + labelCount[2] + labelCount[3] + labelCount[4];
+		float onePercent = sumLabels / 100;
+
+		cout << "1: " << labelCount[1] / onePercent << " 2: " << labelCount[2] / onePercent << " 3: " << labelCount[3] / onePercent << " 4: " << labelCount[4] / onePercent;
+		cout << " Sum of Labels: " << sumLabels << endl;
+
+		float labelPercen[4] = { labelCount[1] / onePercent ,labelCount[2] / onePercent ,labelCount[3] / onePercent ,labelCount[4] / onePercent };
+
+		float minDistance = std::numeric_limits<float>::max();
+		for (int k = 0; k < zSize; k++) {
+			bool isNotValid = false;
+
+			for (int y = 0; y < 5; y++) {
+				zSlices[k][y] = (zSlices[k][y] - minsmax[y][0]) / ranges[y];
+			}
+
+			float sumLabelsSlice = zSlices[k][1] + zSlices[k][2] + zSlices[k][3] + zSlices[k][4];
+			float onePercentSlice = sumLabelsSlice / 100;
+			float labelPercenSlice[4] = { zSlices[k][1] / onePercentSlice ,zSlices[k][2] / onePercentSlice ,zSlices[k][3] / onePercentSlice ,zSlices[k][4] / onePercentSlice };
+
+			if (isnan(labelPercenSlice[0]) || isnan(labelPercenSlice[1]) || isnan(labelPercenSlice[2]) || isnan(labelPercenSlice[3])) {
+				isNotValid = true;
+			}
+
+			if (isinf(labelPercenSlice[0]) || isinf(labelPercenSlice[1]) || isinf(labelPercenSlice[2]) || isinf(labelPercenSlice[3])) {
+				isNotValid = true;
+			}
+
+			boost::accumulators::accumulator_set<double, boost::accumulators::stats<boost::accumulators::tag::variance> > acc;
+
+			for (int l = 0; l < 4; l++) {
+				if (labelPercenSlice[l] < 0.0) { isNotValid = true; }
+				acc(labelPercenSlice[l]);
+			}
+
+			for (int l = 1; l < 5; l++) {
+				if (zSlices[k][l] < 0.0) { isNotValid = true; }
+			}
+
+			//float distance = vectorDistance(labelPercen, labelPercen + 4, labelPercenSlice);
+			
+			//if (distance < 15 && !isNotValid) {
+			if(!isNotValid){
+				cout << "mean for slice " << k << " " << boost::accumulators::mean(acc) << endl;
+				cout << sqrt(boost::accumulators::variance(acc)) << endl;
+				//if (distance < minDistance) {
+					minDistance = distance;
+					//cout << W3 << labelPercenSlice[0] << W3 << labelPercenSlice[1] << W3 << labelPercenSlice[2] << W3 << labelPercenSlice[3] <<
+					cout << "\t|\t[" << W3 << zSlices[k][1] << "," << W3 << zSlices[k][2] << "," << W3 << zSlices[k][3] << "," << W3 << zSlices[k][4] << "],\t|\t";
+						//<< "Distance: " << W3 << distance << endl;
+				//}
+			}
+		}
+
+		pressEnter();
+
+		for (int j = 0; j < 5; j++) {
+		}
+		cout << endl;
 	}
+
+
+
+	//std::string pngFileName(unquoteMystr);
+	//std::string pngOrFileName(unquoteMystr);
+
+	//boost::replace_all(pngFileName, ".mha", ".mha.png");
+	//boost::replace_all(pngOrFileName, ".mha", ".mha.orig.png");
 
     //QApplication a(argc, argv);
 
@@ -260,182 +193,55 @@ int main(int argc, char *argv[])
     //w.setWindowIcon(QIcon("../data/logo/QT.ico"));
     //w.show();
     //return a.exec();
-	std::string newString; cin >> newString;
+	pressEnter();
 }
 
-
-template< unsigned int VDimension >
-int ReadScalarImage(const char* inputFileName,
-	const itk::ImageIOBase::IOComponentType componentType)
-{
-	switch (componentType)
+void GetAllPathsFromWorkspace(string workspacePath, vector< vector< string > >& allPaths) {
+	int imageNr = 0;
+	std::vector<std::string> fileList(5);
+	for (auto it : recursive_directory_range(workspacePath))
 	{
-	default:
-	case itk::ImageIOBase::UNKNOWNCOMPONENTTYPE:
-		std::cerr << "Unknown and unsupported component type!" << std::endl;
-		return EXIT_FAILURE;
+		std::stringstream Mystr;
+		Mystr << it;
 
-	case itk::ImageIOBase::UCHAR:
-	{
-		typedef unsigned char PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
+		if (boost::ends_with(Mystr.str(), ".mha\"")) {
+			if (imageNr == 5) {
+				imageNr = 0;
+				allPaths.push_back(fileList);
+			}
 
-		typename ImageType::Pointer image = ImageType::New();
+			std::string unquoteMystr = Mystr.str();
 
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
+			boost::replace_all(unquoteMystr, "\"", "");
+
+			if (boost::algorithm::contains(unquoteMystr, ".OT.")) {
+				fileList[0] = unquoteMystr;
+			}
+			else if (boost::algorithm::contains(unquoteMystr, "_Flair")) {
+				fileList[1] = unquoteMystr;
+			}
+			else if (boost::algorithm::contains(unquoteMystr, "_T1c")) {
+				fileList[2] = unquoteMystr;
+			}
+			else if (boost::algorithm::contains(unquoteMystr, "_T1")) {
+				fileList[3] = unquoteMystr;
+			}
+			else if (boost::algorithm::contains(unquoteMystr, "_T2")) {
+				fileList[4] = unquoteMystr;
+			}
+			imageNr++;
 		}
-
-		std::cout << image << std::endl;
-		break;
 	}
+}
 
-	case itk::ImageIOBase::CHAR:
-	{
-		typedef char PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
+template<class Iter_T, class Iter2_T>
+double vectorDistance(Iter_T first, Iter_T last, Iter2_T first2) {
+	double ret = 0.0;
+	while (first != last) {
+		double dist = (*first++) - (*first2++);
+		ret += dist * dist;
 	}
-
-	case itk::ImageIOBase::USHORT:
-	{
-		typedef unsigned short PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
-	}
-
-	case itk::ImageIOBase::SHORT:
-	{
-		typedef short PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
-	}
-
-	case itk::ImageIOBase::UINT:
-	{
-		typedef unsigned int PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
-	}
-
-	case itk::ImageIOBase::INT:
-	{
-		typedef int PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
-	}
-
-	case itk::ImageIOBase::ULONG:
-	{
-		typedef unsigned long PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
-	}
-
-	case itk::ImageIOBase::LONG:
-	{
-		typedef long PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
-	}
-
-	case itk::ImageIOBase::FLOAT:
-	{
-		typedef float PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
-	}
-
-	case itk::ImageIOBase::DOUBLE:
-	{
-		typedef double PixelType;
-		typedef itk::Image< PixelType, VDimension > ImageType;
-
-		typename ImageType::Pointer image = ImageType::New();
-
-		if (ReadImage< ImageType >(inputFileName, image) == EXIT_FAILURE)
-		{
-			return EXIT_FAILURE;
-		}
-
-		std::cout << image << std::endl;
-		break;
-	}
-	}
-	return EXIT_SUCCESS;
+	return ret > 0.0 ? sqrt(ret) : 0.0;
 }
 
 itk::Image< unsigned char, 2>::Pointer EliminateNonRegions(int voxelTh, int regionCount, itk::Image<unsigned char, 2>::Pointer labelImage) {
