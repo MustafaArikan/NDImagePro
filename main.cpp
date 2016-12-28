@@ -20,14 +20,17 @@
 #include "QuickView.h"
 #include "itkImageFileWriter.h"
 #include "itkPNGImageIOFactory.h"
+#include "itkCastImageFilter.h"
+#include "itkConstantPadImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
 
 using namespace std;
 #define W3 setw(5) << fixed << right << setprecision(3)
 
 void GetAllPathsFromWorkspace(string workspacePath, vector< vector< string > >& allPaths);
-void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput);
+void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int, int);
 void ExtractSliceAsMask(int repSlice, std::string pathToMhd, std::string pathToOutput);
-void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::string pathToOutput);
+void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int, int);
 
 template<class Iter_T, class Iter2_T>
 double vectorDistance(Iter_T first, Iter_T last, Iter2_T first2);
@@ -69,6 +72,37 @@ int main(int argc, char *argv[])
 	int i = 0;  // counter
 	std::cout << std::setw(3);
 	int testImageNr = 21;
+
+	int maxX = std::numeric_limits<int>::min();
+	int maxY = std::numeric_limits<int>::min();
+
+	for (it = allPaths.begin(); it < allPaths.end(); it++, i++) {
+		cout << allPaths[i][0].c_str() << endl;
+		ReaderType::Pointer reader = ReaderType::New();
+		reader->SetFileName(allPaths[i][0].c_str());
+		reader->Update();
+		int x = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
+		int y = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+
+		cout << "dim: " << x << "," << y << endl;
+
+		if (x > maxX) {
+			maxX = x;
+		}
+
+		if (y > maxY) {
+			maxY = y;
+		}
+	}
+
+	i = 0;
+
+	maxX = 126;
+	maxY = 166;
+
+	cout << "Max X is : " << maxX << endl;
+	cout << "Max Y is : " << maxY << endl;
+	pressEnter();
 
 	for (it = allPaths.begin(); it < allPaths.end(); it++, i++) {
 
@@ -189,21 +223,26 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-
+		
 		if (repSlice != -1) {
 			boost::filesystem::path filenameDataset(allPaths[i][0]);
 			if (zSlicesNorm[repSlice][1] != 0 && zSlicesNorm[repSlice][2] != 0 && zSlicesNorm[repSlice][3] != 0 && zSlicesNorm[repSlice][4] != 0) {
-				cout << "Slice " << W3 << repSlice << W3 << filenameDataset.filename() << endl;
-				cout << "[" << W3 << zSlices[repSlice][1] << "," << W3 << zSlices[repSlice][2] << "," << W3 << zSlices[repSlice][3] << "," << W3 << zSlices[repSlice][4] << "]" << endl;// "],\t|\t" << endl;
-				cout << "[" << W3 << zSlicesNorm[repSlice][1] << "," << W3 << zSlicesNorm[repSlice][2] << "," << W3 << zSlicesNorm[repSlice][3] << "," << W3 << zSlicesNorm[repSlice][4] << "]" << endl; // "],\t|\t" << endl;
+				//cout << "Slice " << W3 << repSlice << W3 << filenameDataset.filename() << endl;
+				//cout << "[" << W3 << zSlices[repSlice][1] << "," << W3 << zSlices[repSlice][2] << "," << W3 << zSlices[repSlice][3] << "," << W3 << zSlices[repSlice][4] << "]" << endl;// "],\t|\t" << endl;
+				//cout << "[" << W3 << zSlicesNorm[repSlice][1] << "," << W3 << zSlicesNorm[repSlice][2] << "," << W3 << zSlicesNorm[repSlice][3] << "," << W3 << zSlicesNorm[repSlice][4] << "]" << endl; // "],\t|\t" << endl;
 
 				for (int j = 0; j < 5; j++) {
 					if (j == 0) {
-						ExtractSliceAsAnnotatedImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_manual1.tif");
+						ExtractSliceAsAnnotatedImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_manual1.png", maxX, maxY);
+						cout << "/SegNet/CamVid/train/" + std::to_string(testImageNr) + "_training.png ";
+							
+
 					}
-					else if (j == 1) {
-						ExtractSliceAsImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training.tif");
-						ExtractSliceAsMask(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training_mask.tif");
+					else if (j == 4) {
+						//cout << "Extract image" << endl;
+						ExtractSliceAsImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training.png", maxX, maxY);
+						//ExtractSliceAsMask(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training_mask.png");
+						cout << "/SegNet/CamVid/trainannot/" + std::to_string(testImageNr) + "_manual1.png" << endl;
 					}
 				}
 				testImageNr++;
@@ -211,7 +250,7 @@ int main(int argc, char *argv[])
 		}
 
 		pressEnter();
-		cout << endl;
+		//cout << endl;
 	}
 
 
@@ -347,23 +386,77 @@ itk::Image< unsigned char, 2>::Pointer EliminateNonRegions(int voxelTh, int regi
 	return newImage;
 }
 
-void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput) {
+void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int maxX, int maxY) {
 	typedef itk::Image< double, 3 >         ImageType;
 	typedef itk::ImageFileReader<ImageType> ReaderType;
+
+	typedef itk::Image< unsigned char, 3 >  OutputImageType;
 
 	ReaderType::Pointer reader = ReaderType::New();
 	reader->SetFileName(pathToMhd.c_str());
 	reader->Update();
 
-	typedef itk::Image< unsigned short, 2 >	IntImageType2D;
+	typedef itk::RescaleIntensityImageFilter< ImageType, ImageType > RescaleType;
+	RescaleType::Pointer rescale = RescaleType::New();
+	rescale->SetInput(reader->GetOutput());
+	rescale->SetOutputMinimum(0);
+	rescale->SetOutputMaximum(itk::NumericTraits< unsigned char >::max());
+
+	typedef itk::CastImageFilter< ImageType, OutputImageType > FilterType;
+	FilterType::Pointer cast = FilterType::New();
+	cast->SetInput(rescale->GetOutput());
+	cast->Update();
+
+	ImageType::SizeType upperExtendRegion;
+	ImageType::SizeType lowerExtendRegion;
+
+	int padX = maxX - reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
+	int padY = maxY - reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+
+	if (padX % 2 == 0) {
+		padX = padX / 2;
+		upperExtendRegion[0] = padX;
+		lowerExtendRegion[0] = padX;
+	}
+	else{
+		padX = padX / 2;
+		upperExtendRegion[0] = padX;
+		lowerExtendRegion[0] = padX + 1;
+	}
+
+	if (padY % 2 == 0) {
+		padY = padY / 2;
+		upperExtendRegion[1] = padY;
+		lowerExtendRegion[1] = padY;
+	}
+	else {
+		padY = padY / 2;
+		upperExtendRegion[1] = padY;
+		lowerExtendRegion[1] = padY + 1;
+	}
+
+	upperExtendRegion[2] = 0;
+	lowerExtendRegion[2] = 0;
+
+	ImageType::PixelType constantPixel = 0;
+
+	typedef itk::ConstantPadImageFilter < OutputImageType, OutputImageType > PadFilterType;
+	PadFilterType::Pointer filter = PadFilterType::New();
+	filter->SetInput(cast->GetOutput());
+	filter->SetPadUpperBound(upperExtendRegion);
+	filter->SetPadLowerBound(lowerExtendRegion);
+	filter->SetConstant(constantPixel);
+	filter->Update();
+
+	typedef itk::Image< unsigned char, 2 >	IntImageType2D;
 	IntImageType2D::RegionType region;
 	IntImageType2D::IndexType start;
 	start[0] = 0;
 	start[1] = 0;
 
 	IntImageType2D::SizeType size;
-	size[0] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
-	size[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+	size[0] = filter->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
+	size[1] = filter->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
 
 	region.SetSize(size);
 	region.SetIndex(start);
@@ -373,7 +466,7 @@ void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathTo
 	image2d->Allocate();
 	image2d->FillBuffer(0);
 
-	itk::ImageSliceIteratorWithIndex<ImageType> it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
+	itk::ImageSliceIteratorWithIndex<OutputImageType> it(filter->GetOutput(), filter->GetOutput()->GetLargestPossibleRegion());
 	itk::ImageSliceIteratorWithIndex<IntImageType2D> it2(image2d, image2d->GetLargestPossibleRegion());
 
 	it.SetFirstDirection(0);
@@ -479,13 +572,54 @@ void ExtractSliceAsMask(int repSlice, std::string pathToMhd, std::string pathToO
 	writer->Update();
 }
 
-void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::string pathToOutput) {
+void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int maxX, int maxY) {
 	typedef itk::Image< double, 3 >         ImageType;
 	typedef itk::ImageFileReader<ImageType> ReaderType;
 
 	ReaderType::Pointer reader = ReaderType::New();
 	reader->SetFileName(pathToMhd.c_str());
 	reader->Update();
+
+	ImageType::SizeType upperExtendRegion;
+	ImageType::SizeType lowerExtendRegion;
+
+	int padX = maxX - reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
+	int padY = maxY - reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+
+	if (padX % 2 == 0) {
+		padX = padX / 2;
+		upperExtendRegion[0] = padX;
+		lowerExtendRegion[0] = padX;
+	}
+	else {
+		padX = padX / 2;
+		upperExtendRegion[0] = padX;
+		lowerExtendRegion[0] = padX + 1;
+	}
+
+	if (padY % 2 == 0) {
+		padY = padY / 2;
+		upperExtendRegion[1] = padY;
+		lowerExtendRegion[1] = padY;
+	}
+	else {
+		padY = padY / 2;
+		upperExtendRegion[1] = padY;
+		lowerExtendRegion[1] = padY + 1;
+	}
+
+	upperExtendRegion[2] = 0;
+	lowerExtendRegion[2] = 0;
+
+	ImageType::PixelType constantPixel = 0;
+
+	typedef itk::ConstantPadImageFilter < ImageType, ImageType > PadFilterType;
+	PadFilterType::Pointer filter = PadFilterType::New();
+	filter->SetInput(reader->GetOutput());
+	filter->SetPadUpperBound(upperExtendRegion);
+	filter->SetPadLowerBound(lowerExtendRegion);
+	filter->SetConstant(constantPixel);
+	filter->Update();
 
 	typedef itk::Image< unsigned char, 2 >	IntImageType2D;
 	IntImageType2D::RegionType region;
@@ -494,8 +628,8 @@ void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::stri
 	start[1] = 0;
 
 	IntImageType2D::SizeType size;
-	size[0] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
-	size[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+	size[0] = filter->GetOutput()->GetLargestPossibleRegion().GetSize()[0];
+	size[1] = filter->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
 
 	region.SetSize(size);
 	region.SetIndex(start);
@@ -505,7 +639,7 @@ void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::stri
 	image2d->Allocate();
 	image2d->FillBuffer(0);
 
-	itk::ImageSliceIteratorWithIndex<ImageType> it(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
+	itk::ImageSliceIteratorWithIndex<ImageType> it(filter->GetOutput(), filter->GetOutput()->GetLargestPossibleRegion());
 	itk::ImageSliceIteratorWithIndex<IntImageType2D> it2(image2d, image2d->GetLargestPossibleRegion());
 
 	it.SetFirstDirection(0);
@@ -528,7 +662,7 @@ void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::stri
 		{
 			ImageType::ValueType value = it.Get();  // it.Set() doesn't exist in the Const Iterator
 			if (value == 1 || value == 2 || value == 3 || value == 4) {
-				it2.Set(255);
+				it2.Set(value);
 			}
 			++it;
 			++it2;
