@@ -28,7 +28,7 @@ using namespace std;
 #define W3 setw(5) << fixed << right << setprecision(3)
 
 void GetAllPathsFromWorkspace(string workspacePath, vector< vector< string > >& allPaths);
-void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int, int);
+void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int, int, int);
 void ExtractSliceAsMask(int repSlice, std::string pathToMhd, std::string pathToOutput);
 void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int, int);
 
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 
 	cout << "Max X is : " << maxX << endl;
 	cout << "Max Y is : " << maxY << endl;
-	pressEnter();
+	//pressEnter();
 
 	for (it = allPaths.begin(); it < allPaths.end(); it++, i++) {
 
@@ -224,32 +224,49 @@ int main(int argc, char *argv[])
 			}
 		}
 		
-		if (repSlice != -1) {
+		//if (repSlice != -1) {
+		for(repSlice = 0; repSlice < zSize; repSlice++){
 			boost::filesystem::path filenameDataset(allPaths[i][0]);
-			if (zSlicesNorm[repSlice][1] != 0 && zSlicesNorm[repSlice][2] != 0 && zSlicesNorm[repSlice][3] != 0 && zSlicesNorm[repSlice][4] != 0) {
+			//if (zSlicesNorm[repSlice][1] != 0 && zSlicesNorm[repSlice][2] != 0 && zSlicesNorm[repSlice][3] != 0 && zSlicesNorm[repSlice][4] != 0) {
 				//cout << "Slice " << W3 << repSlice << W3 << filenameDataset.filename() << endl;
 				//cout << "[" << W3 << zSlices[repSlice][1] << "," << W3 << zSlices[repSlice][2] << "," << W3 << zSlices[repSlice][3] << "," << W3 << zSlices[repSlice][4] << "]" << endl;// "],\t|\t" << endl;
 				//cout << "[" << W3 << zSlicesNorm[repSlice][1] << "," << W3 << zSlicesNorm[repSlice][2] << "," << W3 << zSlicesNorm[repSlice][3] << "," << W3 << zSlicesNorm[repSlice][4] << "]" << endl; // "],\t|\t" << endl;
 
 				for (int j = 0; j < 5; j++) {
 					if (j == 0) {
-						ExtractSliceAsAnnotatedImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_manual1.png", maxX, maxY);
-						cout << "/SegNet/CamVid/train/" + std::to_string(testImageNr) + "_training.png ";
-							
-
+						ExtractSliceAsAnnotatedImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_manual1.png", maxX, maxY);
+						cout << "/home/optima/marikan/SegNet/CamVid/train/" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_training.png ";
+					}
+					else if (j == 1) {
+						//cout << "Extract image" << endl;
+						ExtractSliceAsImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + "1\\" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_training.tif", maxX, maxY, 1);
+						//ExtractSliceAsMask(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training_mask.png");
+						//cout << "/home/optima/marikan/SegNet/CamVid/trainannot/" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_manual1.png" << endl;
+					}
+					else if (j == 2) {
+						//cout << "Extract image" << endl;
+						ExtractSliceAsImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + "2\\" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_training.tif", maxX, maxY, 2);
+						//ExtractSliceAsMask(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training_mask.png");
+						//cout << "/home/optima/marikan/SegNet/CamVid/trainannot/" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_manual1.png" << endl;
+					}
+					else if (j == 3) {
+						//cout << "Extract image" << endl;
+						ExtractSliceAsImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + "3\\" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_training.tif", maxX, maxY, 3);
+						//ExtractSliceAsMask(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training_mask.png");
+						//cout << "/home/optima/marikan/SegNet/CamVid/trainannot/" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_manual1.png" << endl;
 					}
 					else if (j == 4) {
 						//cout << "Extract image" << endl;
-						ExtractSliceAsImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training.png", maxX, maxY);
+						ExtractSliceAsImage(repSlice, allPaths[i][j], workspacePathTrain + "\\" + "4\\" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_training.tif", maxX, maxY, 4);
 						//ExtractSliceAsMask(repSlice, allPaths[i][j], workspacePathTrain + "\\" + std::to_string(testImageNr) + "_training_mask.png");
-						cout << "/SegNet/CamVid/trainannot/" + std::to_string(testImageNr) + "_manual1.png" << endl;
+						cout << "/home/optima/marikan/SegNet/CamVid/trainannot/" + std::to_string(testImageNr) + "_" + std::to_string(repSlice) + "_" + "_manual1.png" << endl;
 					}
 				}
 				testImageNr++;
-			}
+			//}
 		}
 
-		pressEnter();
+		//pressEnter();
 		//cout << endl;
 	}
 
@@ -386,25 +403,25 @@ itk::Image< unsigned char, 2>::Pointer EliminateNonRegions(int voxelTh, int regi
 	return newImage;
 }
 
-void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int maxX, int maxY) {
+void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathToOutput, int maxX, int maxY, int type) {
 	typedef itk::Image< double, 3 >         ImageType;
 	typedef itk::ImageFileReader<ImageType> ReaderType;
 
-	typedef itk::Image< unsigned char, 3 >  OutputImageType;
+	typedef itk::Image< unsigned short, 3 >  OutputImageType;
 
 	ReaderType::Pointer reader = ReaderType::New();
 	reader->SetFileName(pathToMhd.c_str());
 	reader->Update();
 
-	typedef itk::RescaleIntensityImageFilter< ImageType, ImageType > RescaleType;
-	RescaleType::Pointer rescale = RescaleType::New();
-	rescale->SetInput(reader->GetOutput());
-	rescale->SetOutputMinimum(0);
-	rescale->SetOutputMaximum(itk::NumericTraits< unsigned char >::max());
+	//typedef itk::RescaleIntensityImageFilter< ImageType, ImageType > RescaleType;
+	//RescaleType::Pointer rescale = RescaleType::New();
+	//rescale->SetInput(reader->GetOutput());
+	//rescale->SetOutputMinimum(0);
+	//rescale->SetOutputMaximum(itk::NumericTraits< unsigned char >::max());
 
 	typedef itk::CastImageFilter< ImageType, OutputImageType > FilterType;
 	FilterType::Pointer cast = FilterType::New();
-	cast->SetInput(rescale->GetOutput());
+	cast->SetInput(reader->GetOutput());
 	cast->Update();
 
 	ImageType::SizeType upperExtendRegion;
@@ -448,7 +465,7 @@ void ExtractSliceAsImage(int repSlice, std::string pathToMhd, std::string pathTo
 	filter->SetConstant(constantPixel);
 	filter->Update();
 
-	typedef itk::Image< unsigned char, 2 >	IntImageType2D;
+	typedef itk::Image< unsigned short, 2 >	IntImageType2D;
 	IntImageType2D::RegionType region;
 	IntImageType2D::IndexType start;
 	start[0] = 0;
@@ -611,7 +628,7 @@ void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::stri
 	upperExtendRegion[2] = 0;
 	lowerExtendRegion[2] = 0;
 
-	ImageType::PixelType constantPixel = 0;
+	ImageType::PixelType constantPixel = 5;
 
 	typedef itk::ConstantPadImageFilter < ImageType, ImageType > PadFilterType;
 	PadFilterType::Pointer filter = PadFilterType::New();
@@ -661,7 +678,7 @@ void ExtractSliceAsAnnotatedImage(int repSlice, std::string pathToMhd, std::stri
 		while (!it.IsAtEndOfLine())
 		{
 			ImageType::ValueType value = it.Get();  // it.Set() doesn't exist in the Const Iterator
-			if (value == 1 || value == 2 || value == 3 || value == 4) {
+			if (value == 1 || value == 2 || value == 3 || value == 4 || value == 5) {
 				it2.Set(value);
 			}
 			++it;
